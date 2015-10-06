@@ -1,8 +1,10 @@
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import FeatureUnion, Pipeline
 
+from .generic import Densify
 
 class PandasCategoricalExtractor(BaseEstimator, TransformerMixin):
 
@@ -28,17 +30,27 @@ class SparseMatrixToDataFrame(BaseEstimator, TransformerMixin):
 
     def transform(self, x):
         columns = [
-            c for c, i in sorted(self.features_map.items(), key=lambda x: x[1])]
+            c for c, i in sorted(self.features_map.items(),
+                                 key=lambda x: x[1])
+        ]
         df = pd.DataFrame(x.todense())
         df.columns = columns
         return df
 
 
-def pandas_cat_vectorizer(columns=None):
-    return Pipeline([
-        ('pd_converter', PandasCategoricalExtractor(columns=columns))
-        ('vect', DictVectorizer())
-    ])
+def pandas_cat_vectorizer(columns=None, sparse=False):
+    if sparse:
+        pipeline = Pipeline([
+            ('pd_converter', PandasCategoricalExtractor(columns=columns)),
+            ('vect', DictVectorizer()),
+        ])
+    else:
+        pipeline = Pipeline([
+            ('pd_converter', PandasCategoricalExtractor(columns=columns)),
+            ('vect', DictVectorizer()),
+            ('dense',Densify())
+        ])
+    return pipeline
 
 
 class PandasFeatureConversion(BaseEstimator, TransformerMixin):
@@ -83,7 +95,10 @@ class PandasSelector(BaseEstimator, TransformerMixin):
         for col in x.columns:
             if self.check_condition(x, col):
                 selected_cols.append(col)
-        return x.ix[:, selected_cols]
+        if len(selected_cols) == 1:
+            return np.squeeze(np.array(x.ix[:, selected_cols].values))
+        else:
+            return x.ix[:, selected_cols]
 
 
 class PandasImputeMissing(BaseEstimator, TransformerMixin):
