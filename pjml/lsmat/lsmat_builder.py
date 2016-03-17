@@ -12,6 +12,7 @@ class LSMATBuilder():
         self.y = array.array('L')
         self.id = array.array('L')
         self.col_map = col_map
+        self.col_names = []
         self.row_map = row_map
 
     def _get_next_col_id(self):
@@ -27,6 +28,7 @@ class LSMATBuilder():
         if col not in self.col_map:
             if self.fit:
                 self.col_map[col] = self._get_next_col_id()
+                self.col_names.append(col)
             else:
                 return
 
